@@ -58,6 +58,10 @@ VARIABLE ASSEMBLY_END
   DUP 0 < IF ." Error: Invalid register ID: " . CR BYE THEN THEN
 ;
 
+: REG_SP? ( reg -- reg )
+  DUP 4 = IF ." Error: Can't use SP as a pointer here" CR BYE THEN
+;
+
 \ Write the multiboot header to memory
 : WRITE_MULTIBOOT_HEADER ( -- )
   MULTIBOOT_HEADER
@@ -139,44 +143,50 @@ VARIABLE ASSEMBLY_END
 
 \ Move an 8-bit value from a register to memory
 : MOVR2M8 ( [r32] r8 -- )
-  REG_VALID? SWAP REG_VALID?
+  REG_VALID? SWAP REG_VALID? REG_SP?
   $88 C,
-  SWAP 8 * + C,
+  $40 + SWAP 8 * + C,
+  $00 C,
 ;
 
 \ Move a 16-bit value from a register to memory
 : MOVR2M16 ( [r32] r16 -- )
-  REG_VALID? SWAP REG_VALID?
+  REG_VALID? SWAP REG_VALID? REG_SP?
   $66 C, $89 C,
-  SWAP 8 * + C,
+  $40 + SWAP 8 * + C,
+  $00 C,
 ;
 
 \ Move a 32-bit value from a register to memory
 : MOVR2M32 ( [r32] r32 -- )
-  REG_VALID? SWAP REG_VALID?
+  REG_VALID? SWAP REG_VALID? REG_SP?
   $89 C,
-  SWAP 8 * + C,
+  $40 + SWAP 8 * + C,
+  $00 C,
 ;
 
-\ Move an 8-bit value from a register to memory
+\ Move an 8-bit value from memory to a register
 : MOVM2R8 ( r8 [r32] -- )
   REG_VALID? SWAP REG_VALID?
   $8A C,
-  SWAP 8 * + C,
+  8 * $40 + + C,
+  $00 C,
 ;
 
-\ Move a 16-bit value from a register to memory
+\ Move a 16-bit value from memory to a register
 : MOVM2R16 ( r16 [r32] -- )
   REG_VALID? SWAP REG_VALID?
   $66 C, $8B C,
-  SWAP 8 * + C,
+  8 * $40 + + C,
+  $00 C,
 ;
 
-\ Move a 32-bit value from a register to memory
+\ Move a 32-bit value from memory to a register
 : MOVM2R32 ( r32 [r32] -- )
-  REG_VALID? SWAP REG_VALID?
+  REG_VALID? REG_SP? SWAP REG_VALID?
   $8B C,
-  SWAP 8 * + C,
+  8 * $40 + + C,
+  $00 C,
 ;
 
 \ Increment an 8-bit register
@@ -195,6 +205,24 @@ VARIABLE ASSEMBLY_END
 : INC32 ( r32 -- )
   REG_VALID?
   $FF C, $C0 + C,
+;
+
+\ Decrement an 8-bit register
+: DEC8 ( r8 -- )
+  REG_VALID?
+  $FE C, $C8 + C,
+;
+
+\ Decrement a 16-bit register
+: DEC16 ( r16 -- )
+  REG_VALID?
+  $66 C, $FF C, $C8 + C,
+;
+
+\ Decrement a 32-bit register
+: DEC32 ( r32 -- )
+  REG_VALID?
+  $FF C, $C8 + C,
 ;
 
 \ Compare two 8-bit registers
@@ -232,6 +260,13 @@ VARIABLE ASSEMBLY_END
   DROP
 ;
 
+\ Unconditional, absolute jump to register value
+: JMPA ( abs-reg32 -- )
+  REG_VALID?
+  $FF C,
+  $e0 + C,
+;
+
 \ Jump relatively if zero/not equal
 : JMPZ ( rel -- )
  	$0F C, $85 C,
@@ -245,6 +280,18 @@ VARIABLE ASSEMBLY_END
   DUP 24 RSHIFT C,
   DROP
 ;
+
+\ Push 32-bit register content to the stack
+: PUSH ( r32 -- )
+  REG_VALID?
+  $50 + C,
+;  
+
+\ Pop content from the stack to a 32-bit register
+: POP ( r32 -- )
+  REG_VALID?
+  $58 + C,
+;  
 
 \ STOP. Hammer time!
 : HLT
