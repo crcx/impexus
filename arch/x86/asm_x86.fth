@@ -5,14 +5,15 @@
 
 \ Aux. variables and constants -------------------------------------------------
 
-$1BADB002 CONSTANT MULTIBOOT_MAGIC 
+$1BADB002 CONSTANT MULTIBOOT_MAGIC
 $00010000 CONSTANT MULTIBOOT_FLAGS
 $FFFFFFFF MULTIBOOT_MAGIC MULTIBOOT_FLAGS + - 1+ CONSTANT MULTIBOOT_CHECKSUM
+$20       CONSTANT MBH_SIZE
 
-VARIABLE MULTIBOOT_HEADER 32 ALLOT
+VARIABLE MULTIBOOT_HEADER MBH_SIZE ALLOT
 VARIABLE ASSEMBLY_START
 VARIABLE ASSEMBLY_END
-
+VARIABLE ENTRY
 \ Codes for all registers ------------------------------------------------------
 
 \ 8 bit registers
@@ -47,38 +48,57 @@ VARIABLE ASSEMBLY_END
 
 \ Helper functions -------------------------------------------------------------
 
+: FAIL
+  CR ." ### FATAL - Compilation ended with errors."
+  BYE
+;
+
 \ Store 4 bytes in the given address, return the next free address
 : 4-> ( c-addr i -- c-addr+4 )
   OVER !  4 +
 ;
 
+\ C, 16 bit of the top stack element
+: 2C, ( n -- )
+  DUP          C,
+      8 RSHIFT C,
+;
+
+\ C, 32 bit of the top stack element
+: 4C, ( n -- )
+  DUP           C,
+  DUP 8  RSHIFT C,
+  DUP 16 RSHIFT C,
+      24 RSHIFT C,
+;
+
 \ Check if the register code is valid
 : REG_VALID? ( reg -- reg )
-  DUP 7 > IF ." Error: Invalid register ID: " . CR BYE ELSE
-  DUP 0 < IF ." Error: Invalid register ID: " . CR BYE THEN THEN
+  DUP 7 > IF ." Error: Invalid register ID: " . CR FAIL ELSE
+  DUP 0 < IF ." Error: Invalid register ID: " . CR FAIL THEN THEN
 ;
 
 : REG_SP? ( reg -- reg )
-  DUP 4 = IF ." Error: Can't use SP as a pointer here" CR BYE THEN
-;
-
-\ Write the multiboot header to memory
-: WRITE_MULTIBOOT_HEADER ( -- )
-  MULTIBOOT_HEADER
-  MULTIBOOT_MAGIC    4->
-  MULTIBOOT_FLAGS    4->
-  MULTIBOOT_CHECKSUM 4->
-  \ TBD: Document what you're actually doing here:
-  0   4->
-  0   4->
-  0   4->
-  0   4->
-  32  4->
-  DROP
+  DUP 4 = IF ." Error: Can't use SP as a pointer here" CR FAIL THEN
 ;
 
 : ASSEMBLY_LENGTH ( -- i )
   ASSEMBLY_END @ ASSEMBLY_START @ -
+;
+
+\ Write the multiboot header to memory, main function is at c-addr
+: WRITE_MULTIBOOT_HEADER ( c-addr -- )
+  MULTIBOOT_HEADER
+  MULTIBOOT_MAGIC    4->
+  MULTIBOOT_FLAGS    4->
+  MULTIBOOT_CHECKSUM 4->
+  \ Base memory map defined here: [ MULTIBOOT_HEADER ][ .text ][ 16 K of .bss ]
+  0                           4-> \ Physical address for this header start
+  0                           4-> \ TBD: What exactly does this value do?
+  ASSEMBLY_LENGTH MBH_SIZE +  4-> \ Physical end address of the .text segment
+  $80000                      4-> \ .bss physical end address
+  SWAP MBH_SIZE +             4-> \ Entry point for the code
+  DROP
 ;
 
 \ Assembly words ---------------------------------------------------------------
@@ -93,6 +113,11 @@ VARIABLE ASSEMBLY_END
   @ HERE -
 ;
 
+\ Get the absolute physical address of a label
+: A>>> ( c-addr -- n )
+  @ ASSEMBLY_START @ - MBH_SIZE +
+;
+
 \ Assign immediate to register (8 bit)
 : MOVI8 ( r8 i8 -- )
   SWAP REG_VALID?
@@ -104,20 +129,14 @@ VARIABLE ASSEMBLY_END
 : MOVI16 ( r16 i -- )
   SWAP REG_VALID?
   $66 C, $B8 + C,
-  DUP       C,
-  DUP 8 RSHIFT C,
-  DROP 
+  2C,
 ;
 
 \ Assign immediate to register (32 bit)
 : MOVI32 ( r32 i -- )
   SWAP REG_VALID?
   $B8 + C,
-  DUP       C,
-  DUP 8 RSHIFT C,
-  DUP 16 RSHIFT C,
-  DUP 24 RSHIFT C,
-  DROP
+  4C,
 ;
 
 \ Move an 8-bit value from one register to an other
@@ -253,11 +272,7 @@ VARIABLE ASSEMBLY_END
   DUP 0 < IF
     $FFFFFFFF +
   THEN
-  DUP           C,
-  DUP 8  RSHIFT C,
-  DUP 16 RSHIFT C,
-  DUP 24 RSHIFT C,
-  DROP
+  4C,
 ;
 
 \ Unconditional, absolute jump to register value
@@ -274,11 +289,7 @@ VARIABLE ASSEMBLY_END
   DUP 0 < IF
     $FFFFFFFF +
   THEN
-  DUP           C,
-  DUP 8  RSHIFT C,
-  DUP 16 RSHIFT C,
-  DUP 24 RSHIFT C,
-  DROP
+  4C,
 ;
 
 \ Push 32-bit register content to the stack
@@ -291,7 +302,22 @@ VARIABLE ASSEMBLY_END
 : POP ( r32 -- )
   REG_VALID?
   $58 + C,
-;  
+;
+
+\ Call
+: CALL ( c-addr -- )
+  $E8 C,
+  4 - \ Calculate proper relative address
+  DUP 0 < IF
+    $FFFFFFFF +
+  THEN
+  4C,
+;
+
+\ Return
+: RET ( -- )
+  $C3 C,
+;
 
 \ STOP. Hammer time!
 : HLT
@@ -301,15 +327,16 @@ VARIABLE ASSEMBLY_END
 \ Routine for writing everything to a file -------------------------------------
 
 : COMPILE
-  WRITE_MULTIBOOT_HEADER
+  ENTRY @ ASSEMBLY_START @ - WRITE_MULTIBOOT_HEADER
   \ Create a file named "kernel":
   S" kernel" R/W
-  CREATE-FILE 0= IF ELSE ." E: Can't create/open file 'kernel'." BYE THEN
+  CREATE-FILE 0= IF ELSE ." E: Can't create/open file 'kernel'." FAIL THEN
   \ Write the multiboot header to the file: 
   DUP MULTIBOOT_HEADER 32 ROT 
-  WRITE-FILE 0= IF ELSE ." E: Can't write to file." CR BYE THEN
+  WRITE-FILE 0= IF ELSE ." E: Can't write to file." CR FAIL THEN
   \ Write the code to the file:
   DUP ASSEMBLY_START @ ASSEMBLY_LENGTH ROT 
-  WRITE-FILE 0= IF ELSE ." E: Can't write to file." CR BYE THEN
+  WRITE-FILE 0= IF ELSE ." E: Can't write to file." CR FAIL THEN
   CLOSE-FILE
+  CR
 ;

@@ -2,68 +2,128 @@
 \ (c) 2018 Jan-Michael "jmf" Franz
 INCLUDE asm_x86.fth
 
+\ Alternative register names
+\ TBD: Store TOS in a register for better performance
+ESP CONSTANT RSP \ Return stack pointer
+EBP CONSTANT PSP \ Parameter stack pointer
+
+\ Memory layout:
+\ 0x00      [ Multiboot header       ]
+\ MBH_SIZE  [ Text segment           ]
+\ following [ Forth Dictionary start ]
+\ 0x78000   [ Forth Dictionary end   ]
+\ 0x78004   [ RSP bottom             ]
+\ 0x7C000   [ RSP top                ]
+\ 0x7C004   [ PSP bottom             ]
+\ 0x80000   [ PSP top                ]
+
+\ Assembly macros:
+
+\ Push 32-bit of data from register to PSP
+: PUSH_PSP ( reg32 -- )
+  REG_VALID?
+  PSP SWAP MOVR2M32
+  PSP     INC32
+  PSP     INC32
+  PSP     INC32
+  PSP     INC32
+;
+
+\ Pop 32 bit of data from PSP to a register
+: POP_PSP ( reg32 -- )
+  REG_VALID?
+  PSP     DEC32
+  PSP     DEC32
+  PSP     DEC32
+  PSP     DEC32
+      PSP MOVM2R32
+;
+
 \ Declaration of labels:
-VARIABLE LOOP1
+VARIABLE FAIL
+VARIABLE F_!
+VARIABLE F_C!
+VARIABLE F_EMIT
+VARIABLE F_RUN
+VARIABLE RUN
 
-\ Assembly code
-
+\ Content of text and data segment
 HERE ASSEMBLY_START !
 
-EBX $B8000 MOVI32
-AH  0      MOVI8
-AL  '#'    MOVI8
+ENTRY ---
+  \ Set up the stack pointer
+  PSP $80000 MOVI32
+  \ Set up the return stack pointer
+  RSP $7C000 MOVI32
+  \ Pointer to the screen, only temporary - TBD: Implement better solution
+  EDX $B8000 MOVI32
 
-CX  0      MOVI16
-DX  2000   MOVI16 \ 25*80, terminal size
+  \ Jump into the starting word
+  RUN ---
+  $70 CALL \ <-- Change this value as instructed at compilation
+  HLT
 
-\ Write squiggles in terminal:
-LOOP1 ---
-  CX     INC16
-  EBX AX MOVR2M16
-  EBX    INC32
-  EBX    INC32
-  AH     INC8
-  CX  DX CMPI16
-LOOP1 >>> JMPZ
+FAIL ---
+  HLT
 
-\ Write "impexus"
-EBX $B8000 MOVI32
-AH  $F     MOVI8
+\ Dictionary starts here
 
-AL  'i'    MOVI8
-EBX AX     MOVR2M16
+F_! --- ( n c-addr -- )
+  EAX POP_PSP
+  EBX POP_PSP
+  EAX EBX MOVR2M32
+  RET
 
-EBX        INC32
-EBX        INC32
-AL  'm'    MOVI8
-EBX AX     MOVR2M16
+F_C! --- ( n c-addr -- )
+  EAX POP_PSP
+  EBX POP_PSP
+  EAX BL MOVR2M8
+  RET
 
-EBX        INC32
-EBX        INC32
-AL  'p'    MOVI8
-EBX AX     MOVR2M16
-
-EBX        INC32
-EBX        INC32
-AL  'e'    MOVI8
-EBX AX     MOVR2M16
-
-EBX        INC32
-EBX        INC32
-AL  'x'    MOVI8
-EBX AX     MOVR2M16
-
-EBX        INC32
-EBX        INC32
-AL  'u'    MOVI8
-EBX AX     MOVR2M16
-
-EBX        INC32
-EBX        INC32
-AL  's'    MOVI8
-EBX AX     MOVR2M16
+F_EMIT --- ( c -- )
+  \ Print letter
+  EDX PUSH_PSP
+  F_C! >>> CALL
+  EDX INC32
+  \ Blue text color
+  EAX 1 MOVI32
+  EAX PUSH_PSP
+  EDX PUSH_PSP
+  F_C! >>> CALL
+  EDX INC32
+  RET
 
 HLT
+F_RUN --- ( -- )
+  EAX 'x' MOVI32
+  EAX     PUSH_PSP
+  EAX 's' MOVI32
+  EAX     PUSH_PSP
+  EAX 'u' MOVI32
+  EAX     PUSH_PSP
+  EAX 'x' MOVI32
+  EAX     PUSH_PSP
+  EAX 'e' MOVI32
+  EAX     PUSH_PSP
+  EAX 'p' MOVI32
+  EAX     PUSH_PSP
+  EAX 'm' MOVI32
+  EAX     PUSH_PSP
+  EAX 'i' MOVI32
+  EAX     PUSH_PSP
+
+  F_EMIT >>> CALL
+  F_EMIT >>> CALL
+  F_EMIT >>> CALL
+  F_EMIT >>> CALL
+  F_EMIT >>> CALL
+  F_EMIT >>> CALL
+  F_EMIT >>> CALL
+RET
+
+\ TBD: Automate this!
+CR CR F_RUN @ RUN @ - 1- HEX .
+CR ." (Please enter that value at the CALL after RUN --- and recompile)"
 
 HERE ASSEMBLY_END !
 
