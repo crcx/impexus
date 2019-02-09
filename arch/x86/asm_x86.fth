@@ -5,338 +5,344 @@
 
 \ Aux. variables and constants -------------------------------------------------
 
-$1BADB002 CONSTANT MULTIBOOT_MAGIC
-$00010000 CONSTANT MULTIBOOT_FLAGS
-$FFFFFFFF MULTIBOOT_MAGIC MULTIBOOT_FLAGS + - 1+ CONSTANT MULTIBOOT_CHECKSUM
-$20       CONSTANT MBH_SIZE
+$1BADB002 constant multiboot_magic
+$00010000 constant multiboot_flags
+$FFFFFFFF multiboot_magic multiboot_flags + - 1+ constant multiboot_checksum
+$20       constant mbh_size
 
-VARIABLE MULTIBOOT_HEADER MBH_SIZE ALLOT
-VARIABLE ASSEMBLY_START
-VARIABLE ASSEMBLY_END
-VARIABLE ENTRY
+variable multiboot_header mbh_size ALLOT
+variable assembly_start
+variable ASSEMBLY_END
+variable entry
 \ Codes for all registers ------------------------------------------------------
 
 \ 8 bit registers
-0 CONSTANT AL
-1 CONSTANT CL
-2 CONSTANT DL
-3 CONSTANT BL
-4 CONSTANT AH
-5 CONSTANT CH
-6 CONSTANT DH
-7 CONSTANT BH
+0 constant AL
+1 constant CL
+2 constant DL
+3 constant BL
+4 constant AH
+5 constant CH
+6 constant DH
+7 constant BH
 
 \ 16 bit registers
-0 CONSTANT AX
-1 CONSTANT CX
-2 CONSTANT DX
-3 CONSTANT BX
-4 CONSTANT SP
-5 CONSTANT BP
-6 CONSTANT SI
-7 CONSTANT DI
+0 constant AX
+1 constant CX
+2 constant DX
+3 constant BX
+4 constant SP
+5 constant BP
+6 constant SI
+7 constant DI
 
 \ 32 bit registers
-0 CONSTANT EAX
-1 CONSTANT ECX
-2 CONSTANT EDX
-3 CONSTANT EBX
-4 CONSTANT ESP
-5 CONSTANT EBP
-6 CONSTANT ESI
-7 CONSTANT EDI
+0 constant EAX
+1 constant ECX
+2 constant EDX
+3 constant EBX
+4 constant ESP
+5 constant EBP
+6 constant ESI
+7 constant EDI
 
 \ Helper functions -------------------------------------------------------------
 
-: FAIL
-  CR ." ### FATAL - Compilation ended with errors."
-  BYE
+: fail
+  cr ." ### FATAL - Compilation ended with errors."
+  bye
 ;
 
 \ Store 4 bytes in the given address, return the next free address
 : 4-> ( c-addr i -- c-addr+4 )
-  OVER !  4 +
+  over !  4 +
 ;
 
-\ C, 16 bit of the top stack element
-: 2C, ( n -- )
-  DUP          C,
-      8 RSHIFT C,
+\ c, 16 bit of the top stack element
+: 2c, ( n -- )
+  dup          c,
+      8 rshift c,
 ;
 
-\ C, 32 bit of the top stack element
-: 4C, ( n -- )
-  DUP           C,
-  DUP 8  RSHIFT C,
-  DUP 16 RSHIFT C,
-      24 RSHIFT C,
+\ c, 32 bit of the top stack element
+: 4c, ( n -- )
+  dup           c,
+  dup 8  rshift c,
+  dup 16 rshift c,
+      24 rshift c,
 ;
 
 \ Check if the register code is valid
-: REG_VALID? ( reg -- reg )
-  DUP 7 > IF ." Error: Invalid register ID: " . CR FAIL ELSE
-  DUP 0 < IF ." Error: Invalid register ID: " . CR FAIL THEN THEN
+: reg_valid? ( reg -- reg )
+  dup 7 > if ." Error: Invalid register ID: " . cr fail else
+  dup 0 < if ." Error: Invalid register ID: " . cr fail then then
 ;
 
-: REG_SP? ( reg -- reg )
-  DUP 4 = IF ." Error: Can't use SP as a pointer here" CR FAIL THEN
+: reg_sp? ( reg -- reg )
+  dup 4 = if ." Error: Can't use SP as a pointer here" cr fail then
 ;
 
-: ASSEMBLY_LENGTH ( -- i )
-  ASSEMBLY_END @ ASSEMBLY_START @ -
+: assembly_length ( -- i )
+  ASSEMBLY_END @ assembly_start @ -
 ;
 
 \ Write the multiboot header to memory, main function is at c-addr
-: WRITE_MULTIBOOT_HEADER ( c-addr -- )
-  MULTIBOOT_HEADER
-  MULTIBOOT_MAGIC    4->
-  MULTIBOOT_FLAGS    4->
-  MULTIBOOT_CHECKSUM 4->
-  \ Base memory map defined here: [ MULTIBOOT_HEADER ][ .text ][ 16 K of .bss ]
+: write_multiboot_header ( c-addr -- )
+  multiboot_header
+  multiboot_magic    4->
+  multiboot_flags    4->
+  multiboot_checksum 4->
+  \ Base memory map defined here: [ multiboot_header ][ .text ][ 16 K of .bss ]
   0                           4-> \ Physical address for this header start
   0                           4-> \ TBD: What exactly does this value do?
-  ASSEMBLY_LENGTH MBH_SIZE +  4-> \ Physical end address of the .text segment
+  assembly_length mbh_size +  4-> \ Physical end address of the .text segment
   $80000                      4-> \ .bss physical end address
-  SWAP MBH_SIZE +             4-> \ Entry point for the code
-  DROP
+  swap mbh_size +             4-> \ entry point for the code
+  drop
 ;
 
 \ Assembly words ---------------------------------------------------------------
 
 \ Set a label
 : --- ( c-addr -- )
-  HERE SWAP !
+  here swap !
 ;
 
 \ Get a reference to a label
 : >>> ( c-addr -- n )
-  @ HERE -
+  @ here -
 ;
 
 \ Get the absolute physical address of a label
 : A>>> ( c-addr -- n )
-  @ ASSEMBLY_START @ - MBH_SIZE +
+  @ assembly_start @ - mbh_size +
+;
+
+\ Get the current address in memory
+: CADDR>>> ( -- c-addr )
+  here assembly_start @ - mbh_size +
 ;
 
 \ Assign immediate to register (8 bit)
 : MOVI8 ( r8 i8 -- )
-  SWAP REG_VALID?
-  $B0 + C,
-  C, 
+  swap reg_valid?
+  $B0 + c,
+  c, 
 ;
 
 \ Assign immediate to register (16 bit)
 : MOVI16 ( r16 i -- )
-  SWAP REG_VALID?
-  $66 C, $B8 + C,
-  2C,
+  swap reg_valid?
+  $66 c, $B8 + c,
+  2c,
 ;
 
 \ Assign immediate to register (32 bit)
 : MOVI32 ( r32 i -- )
-  SWAP REG_VALID?
-  $B8 + C,
-  4C,
+  swap reg_valid?
+  $B8 + c,
+  4c,
 ;
 
 \ Move an 8-bit value from one register to an other
 : MOVR8 ( target source -- )
-  REG_VALID? SWAP REG_VALID?
-  $88 C,
-  $C0 + SWAP 8 * + C, \ $C0 + target + 8 * source
+  reg_valid? swap reg_valid?
+  $88 c,
+  $C0 + swap 8 * + c, \ $C0 + target + 8 * source
 ;
 
 \ Move a 16-bit value from one register to an other
 : MOVR16 ( target source -- )
-  REG_VALID? SWAP REG_VALID?
-  $66 C, $89 C,
-  $C0 + SWAP 8 * + C, \ $C0 + target + 8 * source
+  reg_valid? swap reg_valid?
+  $66 c, $89 c,
+  $C0 + swap 8 * + c, \ $C0 + target + 8 * source
 ;
 
 \ Move a 32-bit value from one register to an other
 : MOVR32 ( target source -- )
-  REG_VALID? SWAP REG_VALID?
-  $89 C,
-  $C0 + SWAP 8 * + C, \ $C0 + target + 8 * source
+  reg_valid? swap reg_valid?
+  $89 c,
+  $C0 + swap 8 * + c, \ $C0 + target + 8 * source
 ;
 
 \ Move an 8-bit value from a register to memory
 : MOVR2M8 ( [r32] r8 -- )
-  REG_VALID? SWAP REG_VALID? REG_SP?
-  $88 C,
-  $40 + SWAP 8 * + C,
-  $00 C,
+  reg_valid? swap reg_valid? reg_sp?
+  $88 c,
+  $40 + swap 8 * + c,
+  $00 c,
 ;
 
 \ Move a 16-bit value from a register to memory
 : MOVR2M16 ( [r32] r16 -- )
-  REG_VALID? SWAP REG_VALID? REG_SP?
-  $66 C, $89 C,
-  $40 + SWAP 8 * + C,
-  $00 C,
+  reg_valid? swap reg_valid? reg_sp?
+  $66 c, $89 c,
+  $40 + swap 8 * + c,
+  $00 c,
 ;
 
 \ Move a 32-bit value from a register to memory
 : MOVR2M32 ( [r32] r32 -- )
-  REG_VALID? SWAP REG_VALID? REG_SP?
-  $89 C,
-  $40 + SWAP 8 * + C,
-  $00 C,
+  reg_valid? swap reg_valid? reg_sp?
+  $89 c,
+  $40 + swap 8 * + c,
+  $00 c,
 ;
 
 \ Move an 8-bit value from memory to a register
 : MOVM2R8 ( r8 [r32] -- )
-  REG_VALID? SWAP REG_VALID?
-  $8A C,
-  8 * $40 + + C,
-  $00 C,
+  reg_valid? swap reg_valid?
+  $8A c,
+  8 * $40 + + c,
+  $00 c,
 ;
 
 \ Move a 16-bit value from memory to a register
 : MOVM2R16 ( r16 [r32] -- )
-  REG_VALID? SWAP REG_VALID?
-  $66 C, $8B C,
-  8 * $40 + + C,
-  $00 C,
+  reg_valid? swap reg_valid?
+  $66 c, $8B c,
+  8 * $40 + + c,
+  $00 c,
 ;
 
 \ Move a 32-bit value from memory to a register
 : MOVM2R32 ( r32 [r32] -- )
-  REG_VALID? REG_SP? SWAP REG_VALID?
-  $8B C,
-  8 * $40 + + C,
-  $00 C,
+  reg_valid? reg_sp? swap reg_valid?
+  $8B c,
+  8 * $40 + + c,
+  $00 c,
 ;
 
 \ Increment an 8-bit register
 : INC8 ( r8 -- )
-  REG_VALID?
-  $FE C, $C0 + C,
+  reg_valid?
+  $FE c, $C0 + c,
 ;
 
 \ Increment a 16-bit register
 : INC16 ( r16 -- )
-  REG_VALID?
-  $66 C, $FF C, $C0 + C,
+  reg_valid?
+  $66 c, $FF c, $C0 + c,
 ;
 
 \ Increment a 32-bit register
 : INC32 ( r32 -- )
-  REG_VALID?
-  $FF C, $C0 + C,
+  reg_valid?
+  $FF c, $C0 + c,
 ;
 
 \ Decrement an 8-bit register
 : DEC8 ( r8 -- )
-  REG_VALID?
-  $FE C, $C8 + C,
+  reg_valid?
+  $FE c, $C8 + c,
 ;
 
 \ Decrement a 16-bit register
 : DEC16 ( r16 -- )
-  REG_VALID?
-  $66 C, $FF C, $C8 + C,
+  reg_valid?
+  $66 c, $FF c, $C8 + c,
 ;
 
 \ Decrement a 32-bit register
 : DEC32 ( r32 -- )
-  REG_VALID?
-  $FF C, $C8 + C,
+  reg_valid?
+  $FF c, $C8 + c,
 ;
 
 \ Compare two 8-bit registers
 : CMPI8 ( r8 r8 )
-  REG_VALID?
-  $38 C,
-  $C0 + SWAP 8 * + C,
+  reg_valid?
+  $38 c,
+  $C0 + swap 8 * + c,
 ;
 
 \ Compare two 16-bit registers
 : CMPI16 ( r16 r16 )
-  REG_VALID?
-  $66 C, $39 C,
-  $C0 + SWAP 8 * + C,
+  reg_valid?
+  $66 c, $39 c,
+  $C0 + swap 8 * + c,
 ;
 
 \ Compare two 32-bit registers
 : CMPI32 ( r32 r32 )
-  REG_VALID? SWAP REG_VALID?
-  $39 C,
-  $C0 + SWAP 8 * + C, 
+  reg_valid? swap reg_valid?
+  $39 c,
+  $C0 + swap 8 * + c, 
 ;
 
 \ Unconditional, relative jump
 : JMP ( rel -- )
-  $E9 C,
+  $E9 c,
   4 - \ Calculate proper relative address
-  DUP 0 < IF
+  dup 0 < IF
     $FFFFFFFF +
-  THEN
-  4C,
+  then
+  4c,
 ;
 
 \ Unconditional, absolute jump to register value
 : JMPA ( abs-reg32 -- )
-  REG_VALID?
-  $FF C,
-  $e0 + C,
+  reg_valid?
+  $FF c,
+  $e0 + c,
 ;
 
 \ Jump relatively if zero/not equal
 : JMPZ ( rel -- )
- 	$0F C, $85 C,
+ 	$0F c, $85 c,
   5 - \ Calculate proper relative address
-  DUP 0 < IF
+  dup 0 < IF
     $FFFFFFFF +
-  THEN
-  4C,
+  then
+  4c,
 ;
 
 \ Push 32-bit register content to the stack
 : PUSH ( r32 -- )
-  REG_VALID?
-  $50 + C,
+  reg_valid?
+  $50 + c,
 ;  
 
 \ Pop content from the stack to a 32-bit register
 : POP ( r32 -- )
-  REG_VALID?
-  $58 + C,
+  reg_valid?
+  $58 + c,
 ;
 
 \ Call
 : CALL ( c-addr -- )
-  $E8 C,
+  $E8 c,
   4 - \ Calculate proper relative address
-  DUP 0 < IF
+  dup 0 < IF
     $FFFFFFFF +
-  THEN
-  4C,
+  then
+  4c,
 ;
 
 \ Return
 : RET ( -- )
-  $C3 C,
+  $C3 c,
 ;
 
 \ STOP. Hammer time!
 : HLT
-  $F4 C,
+  $F4 c,
 ;
 
 \ Routine for writing everything to a file -------------------------------------
 
-: COMPILE
-  ENTRY @ ASSEMBLY_START @ - WRITE_MULTIBOOT_HEADER
-  \ Create a file named "kernel":
-  S" kernel" R/W
-  CREATE-FILE 0= IF ELSE ." E: Can't create/open file 'kernel'." FAIL THEN
+: compile
+  entry @ assembly_start @ - write_multiboot_header
+  \ create a file named "kernel":
+  s" kernel" r/w
+  create-file 0= if else ." E: Can't create/open file 'kernel'." fail then
   \ Write the multiboot header to the file: 
-  DUP MULTIBOOT_HEADER 32 ROT 
-  WRITE-FILE 0= IF ELSE ." E: Can't write to file." CR FAIL THEN
+  dup multiboot_header 32 rot 
+  write-file 0= if else ." E: Can't write to file." cr fail then
   \ Write the code to the file:
-  DUP ASSEMBLY_START @ ASSEMBLY_LENGTH ROT 
-  WRITE-FILE 0= IF ELSE ." E: Can't write to file." CR FAIL THEN
-  CLOSE-FILE
-  CR
+  cr ." Writing code to file: " assembly_length . ." bytes..." cr
+  dup assembly_start @ assembly_length rot 
+  write-file 0= if else ." E: Can't write to file." cr fail then
+  close-file
+  ." [DONE]" cr
 ;
