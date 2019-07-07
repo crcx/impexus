@@ -1,1 +1,3 @@
-gforth arch/x86/init.fth
+cd arch/x86
+retro init.forth
+mv kernel ../../
