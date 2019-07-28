@@ -1,3 +1,3 @@
 cd arch/x86
-retro init.forth
+retro nga-x86.forth
 mv kernel ../../
