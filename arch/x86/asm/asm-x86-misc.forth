@@ -3,6 +3,7 @@
 push - Push register value to return stack
 pop  - Pop  return stack value to register
 hlt  - Halt the processor
+cdq  - Convert Doubleword in EAX to Quadword in EDX:EAX
 ~~~
 
 :asm:push (r-)
@@ -17,4 +18,7 @@ hlt  - Halt the processor
   #244 asm:store
 ;
 
+:asm:cdq (-)
+  #153 asm:store
+;
 ~~~

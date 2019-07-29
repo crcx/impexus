@@ -109,6 +109,8 @@ This is followed by various labels used throughout the source code.
 
 'no-increment           var
 
+'shift-right            var
+
 'screen-offset          var
 
 'aux:no-call            var
@@ -124,23 +126,23 @@ nga:entry asm:jmp
 err:undef-error asm:label
   asm:hlt
 
-aux:stack-push asm:label (Drop)
-  PSP PS-TOP asm:cmpi
+aux:stack-push asm:label (Dup)
+  PSP PS-TOP #2 + asm:cmpi
   err:undef-error asm:je  (Stack_overflow)
   PSP #4 asm:subi
   PSP PS-BOTTOM #8 - asm:cmpi
-  ps-push-lt-2 asm:jl
+  ps-push-lt-2 asm:jg
     PSP SOS asm:movr2m
   ps-push-lt-2 asm:label
   SOS TOS asm:movr
   asm:ret
 
-aux:stack-pull asm:label (Dup)
-  PSP PS-BOTTOM asm:cmpi
-  err:undef-error asm:je  (Stack_underflow)
+aux:stack-pull asm:label (Drop)
+  PSP PS-BOTTOM #2 - asm:cmpi
+  err:undef-error asm:jg  (Stack_underflow)
   TOS SOS asm:movr
   PSP PS-BOTTOM #8 - asm:cmpi
-  ps-pull-lt-2 asm:jl
+  ps-pull-lt-2 asm:jg
     SOS PSP asm:movm2r
   ps-pull-lt-2 asm:label
   PSP #4 asm:addi
@@ -198,7 +200,7 @@ nga:pop asm:label
   RSP RS-BOTTOM asm:cmpi
   err:undef-error asm:je (Stack_underflow)
   aux:stack-push asm:call
-  RSP TOS asm:movr2m
+  TOS RSP asm:movm2r
   RSP #4  asm:addi
   asm:ret
 
@@ -213,6 +215,8 @@ nga:jump asm:label
 nga:call  asm:label
   RSP #4  asm:subi
   RSP IP  asm:movr2m
+  RSP #4  asm:subi
+  RSP NB  asm:movr2m
   nga:jump asm:call
   asm:ret
 
@@ -220,15 +224,17 @@ nga:ccall asm:label (Ta-)
   SOS #0  asm:cmpi
   aux:no-call asm:jne
     nga:call asm:call
+    aux:stack-pull asm:call
+    asm:ret
   aux:no-call asm:label
   aux:stack-pull asm:call
   aux:stack-pull asm:call
   asm:ret
 
 nga:ret asm:label
+  NB RSP asm:movm2r
+  RSP #4 asm:addi
   IP RSP asm:movm2r
-  IP  #4 asm:muli
-  IP  #1 asm:subi
   RSP #4 asm:addi
   asm:ret
   
@@ -271,8 +277,8 @@ nga:add       asm:label
   asm:ret
 
 nga:sub       asm:label
-  TOS SOS        asm:subr
-  SOS TOS        asm:movi
+  SOS TOS        asm:subr
+  TOS SOS        asm:movi
   aux:stack-pull asm:call
   asm:ret
 
@@ -282,9 +288,12 @@ nga:mul       asm:label
   asm:ret
 
 nga:divmod    asm:label
+  TOS SOS asm:xorr
+  SOS TOS asm:xorr
+  TOS SOS asm:xorr
   EDX asm:push
+      asm:cdq
   SOS asm:idivr
-  (EAX_is_TOS)
   SOS EDX asm:movr
   EDX asm:pop
   asm:ret
@@ -306,22 +315,31 @@ nga:xor       asm:label
 
 nga:shift     asm:label
   ECX asm:push
-  SOS ECX asm:movr
-  SOS TOS asm:movr
+  ECX TOS asm:movr
+  ECX #0  asm:cmpi
+  shift-right asm:jg
+    ECX #-1 asm:muli
+    SOS asm:shlr
+    ECX asm:pop
+    aux:stack-pull asm:call
+    asm:ret
+  shift-right asm:label
   SOS asm:shrr
-  aux:stack-pull asm:call
   ECX asm:pop
+  aux:stack-pull asm:call
   asm:ret
 
 nga:zret      asm:label
   TOS #0 asm:cmpi
   aux:not-zero asm:jne
     aux:stack-pull asm:call
-    IP RSP asm:movm2r
-    IP  #4 asm:muli
-    IP  #1 asm:subi
+    NB RSP asm:movm2r
     RSP #4 asm:addi
+    IP RSP asm:movm2r
+    RSP #4 asm:addi
+    asm:ret
   aux:not-zero asm:label
+  aux:stack-pull asm:call
   asm:ret
 
 nga:end       asm:label
