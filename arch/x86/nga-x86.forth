@@ -341,7 +341,6 @@ nga:zret      asm:label
     RSP #4 asm:addi
     asm:ret
   aux:not-zero asm:label
-  aux:stack-pull asm:call
   asm:ret
 
 nga:end       asm:label
