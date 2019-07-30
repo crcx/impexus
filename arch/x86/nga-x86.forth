@@ -11,14 +11,14 @@ RS: Nga's Return Stack
 VR: The VM's Return Stack
 ~~~
 
-#6000 'PS-TOP const
-#7000 'PS-BOTTOM const
+#60000 'PS-TOP const
+#61000 'PS-BOTTOM const
 
-#7004 'RS-TOP const
-#8004 'RS-BOTTOM const
+#61004 'RS-TOP const
+#62004 'RS-BOTTOM const
 
-#9008  'VR-TOP const
-#10008 'VR-BOTTOM const
+#62008  'VR-TOP const
+#63008 'VR-BOTTOM const
 
 #32 'nga:codeoffset     var<n>
 
@@ -260,11 +260,13 @@ nga:gt        asm:label
   
 nga:fetch     asm:label
   (TBD:_Implement_negative_introspection)
+  TOS #4 asm:muli
   TOS @nga:memoffset @nga:codeoffset + asm:addi
   TOS TOS                              asm:movm2r
   asm:ret
   
 nga:store     asm:label
+  TOS #4 asm:muli
   TOS @nga:memoffset  @nga:codeoffset + asm:addi
   TOS SOS                               asm:movr2m
   aux:stack-pull                        asm:call
