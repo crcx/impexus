@@ -25,7 +25,8 @@ VR: The VM's Return Stack
 ~~~
 Register definitions.
 The instruction pointer counts bytes while Nga uses 32-bit cells for addressing.
-To get from IP to Nga addresses, divide IP by 4 (IP #2 asm:shl)
+To get from IP to Nga addresses, divide IP by 4 (IP #2 asm:shri)
+The NB register points to the next block and counts in 32-bit cells.
 ~~~
 
 EAX 'TOS const (Top_Of_Stack)
@@ -47,7 +48,7 @@ This function takes a pointer to a label and writes its offset to memory.
 :asm:phyaddr (a-)
   fetch @nga:codeoffset +
 ;
-  
+
 :asm:reladdr (a-)
   fetch asm:currpos - #4 -
 ;
@@ -119,7 +120,11 @@ This is followed by various labels used throughout the source code.
 'aux:not-zero           var
 'aux:mainloop           var
 
-:asm (-------------------------------------------------------------------------)  
+'intr:psp-depth         var
+'intr:rsp-depth         var
+'intr:img-size          var
+
+:asm (-------------------------------------------------------------------------)
 
 nga:entry asm:jmp
 
@@ -154,8 +159,25 @@ aux:false asm:label
   asm:ret
 
 aux:true asm:label
-  aux:stack-push asm:call
+  aux:stack-pull asm:call
   TOS #-1 asm:movi
+  asm:ret
+
+intr:psp-depth asm:label
+  TOS PS-BOTTOM asm:movi
+  TOS PSP       asm:subr
+  TOS #2        asm:shri
+  TOS #1        asm:subi (This_function_uses_one_stack_element)
+  asm:ret
+
+intr:rsp-depth asm:label
+  TOS RS-BOTTOM asm:movi
+  TOS RSP       asm:subr
+  TOS #2        asm:shri
+  asm:ret
+
+intr:img-size  asm:label
+  TOS #30000    asm:movi
   asm:ret
 
 ~~~
@@ -168,11 +190,12 @@ nga:nop asm:label
 nga:lit asm:label
   aux:stack-push asm:call
   TOS NB  asm:movr
+  TOS #4  asm:muli
   TOS nga:memoffset asm:phyaddr asm:addi
   TOS TOS asm:movm2r
-  NB  #4  asm:addi
+  NB  #1  asm:addi
   asm:ret
-  
+
 nga:dup asm:label
   aux:stack-push asm:call
   (TOS_already_SOS)
@@ -206,15 +229,13 @@ nga:pop asm:label
 
 nga:jump asm:label
   IP TOS asm:movr
-  IP #4  asm:muli
   NB IP  asm:movr
+  IP #4  asm:muli
   IP #1  asm:subi
   aux:stack-pull asm:call
   asm:ret
-  
+
 nga:call  asm:label
-  RSP #4  asm:subi
-  RSP IP  asm:movr2m
   RSP #4  asm:subi
   RSP NB  asm:movr2m
   nga:jump asm:call
@@ -233,11 +254,12 @@ nga:ccall asm:label (Ta-)
 
 nga:ret asm:label
   NB RSP asm:movm2r
-  RSP #4 asm:addi
-  IP RSP asm:movm2r
+  IP NB  asm:movr
+  IP #4  asm:muli
+  IP #1  asm:subi
   RSP #4 asm:addi
   asm:ret
-  
+
 nga:eq asm:label
   TOS SOS asm:cmpr
   aux:true asm:je
@@ -257,14 +279,20 @@ nga:gt        asm:label
   TOS SOS   asm:cmpr
   aux:true  asm:jg
   aux:false asm:jmp
-  
+
 nga:fetch     asm:label
-  (TBD:_Implement_negative_introspection)
+  TOS #-1 asm:cmpi
+  intr:psp-depth asm:je
+  TOS #-2 asm:cmpi
+  intr:rsp-depth asm:je
+  TOS #-3 asm:cmpi
+  intr:img-size  asm:je
+
   TOS #4 asm:muli
   TOS @nga:memoffset @nga:codeoffset + asm:addi
   TOS TOS                              asm:movm2r
   asm:ret
-  
+
 nga:store     asm:label
   TOS #4 asm:muli
   TOS @nga:memoffset  @nga:codeoffset + asm:addi
@@ -272,7 +300,7 @@ nga:store     asm:label
   aux:stack-pull                        asm:call
   aux:stack-pull                        asm:call
   asm:ret
-  
+
 nga:add       asm:label
   SOS TOS        asm:addr
   aux:stack-pull asm:call
@@ -309,7 +337,7 @@ nga:or        asm:label
   SOS TOS        asm:orr
   aux:stack-pull asm:call
   asm:ret
-  
+
 nga:xor       asm:label
   SOS TOS        asm:xorr
   aux:stack-pull asm:call
@@ -335,10 +363,7 @@ nga:zret      asm:label
   TOS #0 asm:cmpi
   aux:not-zero asm:jne
     aux:stack-pull asm:call
-    NB RSP asm:movm2r
-    RSP #4 asm:addi
-    IP RSP asm:movm2r
-    RSP #4 asm:addi
+    nga:ret asm:call
     asm:ret
   aux:not-zero asm:label
   asm:ret
@@ -420,7 +445,7 @@ nga:entry asm:label
   VMRS VR-BOTTOM   asm:movi
   IP   #0          asm:movi
   TMP  #753664     asm:movi
-  NB   #4          asm:movi
+  NB   #1          asm:movi
   
   aux:mainloop asm:label
     TMP IP asm:movr
@@ -444,13 +469,14 @@ nga:entry asm:label
     TOS #0 asm:cmpi
     no-increment asm:jne
       IP NB asm:movr
-      NB #4 asm:addi
+      IP #4 asm:muli
+      NB #1 asm:addi
     no-increment asm:label
        TOS asm:pop
     aux:mainloop asm:jmp
     
   #4 asm:currpos @nga:codeoffset + #4 mod - [ asm:hlt ] times
-
+  
   nga:memoffset asm:label
 ;
 (------------------------------------------------------------------------------)
