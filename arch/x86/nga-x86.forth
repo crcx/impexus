@@ -133,7 +133,7 @@ err:undef-error asm:label
 
 aux:stack-push asm:label (Dup)
   PSP PS-TOP #2 + asm:cmpi
-  err:undef-error asm:je  (Stack_overflow)
+  err:undef-error asm:jl  (Stack_overflow)
   PSP #4 asm:subi
   PSP PS-BOTTOM #8 - asm:cmpi
   ps-push-lt-2 asm:jg
@@ -243,7 +243,7 @@ nga:call  asm:label
 
 nga:ccall asm:label (Ta-)
   SOS #0  asm:cmpi
-  aux:no-call asm:jne
+  aux:no-call asm:je
     nga:call asm:call
     aux:stack-pull asm:call
     asm:ret
@@ -271,12 +271,12 @@ nga:neq asm:label
   aux:false asm:jmp
 
 nga:lt asm:label
-  TOS SOS   asm:cmpr
+  SOS TOS   asm:cmpr
   aux:true  asm:jl
   aux:false asm:jmp
 
 nga:gt        asm:label
-  TOS SOS   asm:cmpr
+  SOS TOS   asm:cmpr
   aux:true  asm:jg
   aux:false asm:jmp
 
@@ -384,6 +384,9 @@ screen-offset asm:label
 #753664 asm:store32
 
 nga:iinteract asm:label
+
+  aux:stack-pull asm:call
+
   TMP asm:push
   
   TMP screen-offset asm:phyaddr asm:movi
