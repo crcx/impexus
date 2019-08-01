@@ -11,16 +11,16 @@ RS: Nga's Return Stack
 VR: The VM's Return Stack
 ~~~
 
-#60000 'PS-TOP const
-#61000 'PS-BOTTOM const
+#32256 'PS-TOP const
+#33256 'PS-BOTTOM const
 
-#61004 'RS-TOP const
-#62004 'RS-BOTTOM const
+#33260 'RS-TOP const
+#34260 'RS-BOTTOM const
 
-#62008  'VR-TOP const
-#63008 'VR-BOTTOM const
+#34264 'VR-TOP const
+#35264 'VR-BOTTOM const
 
-#32 'nga:codeoffset     var<n>
+ENTADDR 'nga:codeoffset     var<n>
 
 ~~~
 Register definitions.
