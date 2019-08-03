@@ -53,10 +53,6 @@ This function takes a pointer to a label and writes its offset to memory.
   fetch asm:currpos - #4 -
 ;
 
-:asm:jumpentry (a-)
-  asm:phyaddr asm:store32
-;
-
 ~~~
 Labels are defined, which match the possible Nga opcodes.
 ~~~
@@ -409,36 +405,36 @@ nga:iinteract asm:label
 Jump table:
 ~~~
 nga:jumptable asm:label
-nga:nop       asm:jumpentry (0)
-nga:lit       asm:jumpentry (1)
-nga:dup       asm:jumpentry (2)
-nga:drop      asm:jumpentry (3)
-nga:swap      asm:jumpentry (4)
-nga:push      asm:jumpentry (5)
-nga:pop       asm:jumpentry (6)
-nga:jump      asm:jumpentry (7)
-nga:call      asm:jumpentry (8)
-nga:ccall     asm:jumpentry (9)
-nga:ret       asm:jumpentry (10)
-nga:eq        asm:jumpentry (11)
-nga:neq       asm:jumpentry (12)
-nga:lt        asm:jumpentry (13)
-nga:gt        asm:jumpentry (14)
-nga:fetch     asm:jumpentry (15)
-nga:store     asm:jumpentry (16)
-nga:add       asm:jumpentry (17)
-nga:sub       asm:jumpentry (18)
-nga:mul       asm:jumpentry (19)
-nga:divmod    asm:jumpentry (20)
-nga:and       asm:jumpentry (21)
-nga:or        asm:jumpentry (22)
-nga:xor       asm:jumpentry (23)
-nga:shift     asm:jumpentry (24)
-nga:zret      asm:jumpentry (25)
-nga:end       asm:jumpentry (26)
-nga:ienum     asm:jumpentry (27)
-nga:iquery    asm:jumpentry (28)
-nga:iinteract asm:jumpentry (29)
+nga:nop       asm:jmp (0)
+nga:lit       asm:jmp (1)
+nga:dup       asm:jmp (2)
+nga:drop      asm:jmp (3)
+nga:swap      asm:jmp (4)
+nga:push      asm:jmp (5)
+nga:pop       asm:jmp (6)
+nga:jump      asm:jmp (7)
+nga:call      asm:jmp (8)
+nga:ccall     asm:jmp (9)
+nga:ret       asm:jmp (10)
+nga:eq        asm:jmp (11)
+nga:neq       asm:jmp (12)
+nga:lt        asm:jmp (13)
+nga:gt        asm:jmp (14)
+nga:fetch     asm:jmp (15)
+nga:store     asm:jmp (16)
+nga:add       asm:jmp (17)
+nga:sub       asm:jmp (18)
+nga:mul       asm:jmp (19)
+nga:divmod    asm:jmp (20)
+nga:and       asm:jmp (21)
+nga:or        asm:jmp (22)
+nga:xor       asm:jmp (23)
+nga:shift     asm:jmp (24)
+nga:zret      asm:jmp (25)
+nga:end       asm:jmp (26)
+nga:ienum     asm:jmp (27)
+nga:iquery    asm:jmp (28)
+nga:iinteract asm:jmp (29)
 
 nga:entry asm:label
   TOS  #0          asm:movi
@@ -452,13 +448,12 @@ nga:entry asm:label
   
   aux:mainloop asm:label
     TMP IP asm:movr
-    TMP nga:memoffset asm:phyaddr asm:addi (IP=op-address)
+    TMP nga:memoffset asm:phyaddr asm:addi (TMP=op-address)
     
-    TMP TMP asm:movm2r (IP=op_and_garbage)
-    TMP #255 asm:andi (Strip_away_garbage)
-    TMP #4 asm:muli   (IP=op*4)
-    TMP nga:jumptable asm:phyaddr asm:addi
-    TMP TMP asm:movm2r (IP=code-addr)
+    TMP TMP asm:movm2r (TMP=op_and_garbage)
+    TMP #255 asm:andi  (Strip_away_garbage)
+    TMP #5 asm:muli    (TMP=op*5)
+    TMP nga:jumptable asm:phyaddr asm:addi (TMP=juptable_address)
     
     TMP asm:callr
     
