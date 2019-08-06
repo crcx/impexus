@@ -120,9 +120,17 @@ This is followed by various labels used throughout the source code.
 'intr:rsp-depth         var
 'intr:img-size          var
 
+~~~
+The interfaces are included, then the assembly for Nga is written.
+~~~
+
+'interfaces-x86.forth include
+
 :asm (-------------------------------------------------------------------------)
 
 nga:entry asm:jmp
+
+interfaces:asm
 
 err:undef-error asm:label
   asm:hlt
@@ -369,36 +377,24 @@ nga:end       asm:label
 
 nga:ienum     asm:label
   aux:stack-push asm:call
-  TOS #1         asm:movi
+  TOS @interfaces:Count asm:movi
   asm:ret
 
 nga:iquery    asm:label
-  aux:stack-push asm:call
-  asm:ret
-
-screen-offset asm:label
-#753664 asm:store32
+    TMP TOS asm:movr
+    aux:stack-pull asm:call
+    TMP #5 asm:muli    (TMP=ID*5)
+    TMP #5 asm:addi    (TMP=ID*5+5)
+    TMP nga:jumptable asm:phyaddr asm:addi (TMP=juptable_address)
+    TMP asm:callr
+    asm:ret
 
 nga:iinteract asm:label
-
+  TMP TOS asm:movr
   aux:stack-pull asm:call
-
-  TMP asm:push
-  
-  TMP screen-offset asm:phyaddr asm:movi
-  TMP TMP asm:movm2r
-  
-  TMP AL  asm:movr2m8
-  TMP #1 asm:addi
-  EAX #12 asm:movi
-  TMP AL  asm:movr2m8
-  TMP #1 asm:addi
-  
-  EAX screen-offset asm:phyaddr asm:movi
-  EAX TMP asm:movr2m
-  
-  aux:stack-pull asm:call
-  TMP asm:pop
+  TMP #5  asm:muli    (TMP=ID*5)
+  TMP interfaces:table asm:phyaddr asm:addi (TMP=juptable_address)
+  TMP asm:callr
   asm:ret
 
 ~~~
