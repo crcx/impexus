@@ -385,7 +385,7 @@ nga:iquery    asm:label
     aux:stack-pull asm:call
     TMP #5 asm:muli    (TMP=ID*5)
     TMP #5 asm:addi    (TMP=ID*5+5)
-    TMP nga:jumptable asm:phyaddr asm:addi (TMP=juptable_address)
+    TMP interfaces:table asm:phyaddr asm:addi (TMP=juptable_address)
     TMP asm:callr
     asm:ret
 
