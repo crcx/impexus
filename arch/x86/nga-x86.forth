@@ -383,8 +383,8 @@ nga:ienum     asm:label
 nga:iquery    asm:label
     TMP TOS asm:movr
     aux:stack-pull asm:call
-    TMP #5 asm:muli    (TMP=ID*5)
-    TMP #5 asm:addi    (TMP=ID*5+5)
+    TMP #10 asm:muli    (TMP=ID*10)
+    TMP #5 asm:addi    (TMP=ID*10+5)
     TMP interfaces:table asm:phyaddr asm:addi (TMP=juptable_address)
     TMP asm:callr
     asm:ret
@@ -392,7 +392,7 @@ nga:iquery    asm:label
 nga:iinteract asm:label
   TMP TOS asm:movr
   aux:stack-pull asm:call
-  TMP #5  asm:muli    (TMP=ID*5)
+  TMP #10 asm:muli    (TMP=ID*10)
   TMP interfaces:table asm:phyaddr asm:addi (TMP=juptable_address)
   TMP asm:callr
   asm:ret
