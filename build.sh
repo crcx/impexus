@@ -1,3 +1,1 @@
-cd arch/x86
-retro nga-x86.forth
-mv kernel ../../
+retro kernel/x86/nga-x86.retro

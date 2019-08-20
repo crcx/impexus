@@ -11,7 +11,7 @@ Necessary labels:
 Included interfaces:
 ~~~
 
-'interfaces/textmode.forth include
+'kernel/x86/interfaces/textmode.retro include
 
 ~~~
 To add a new interface:

@@ -1,8 +1,8 @@
 # Nga for x86
 ~~~
 
-'multiboot.forth include
-'asm-x86.forth include
+'kernel/x86/multiboot.retro include
+'asm/x86/asm-x86.retro include
 
 ~~~
 First of all, we take care of the memory layout of the stacks.
@@ -124,7 +124,7 @@ This is followed by various labels used throughout the source code.
 The interfaces are included, then the assembly for Nga is written.
 ~~~
 
-'interfaces-x86.forth include
+'kernel/x86/interfaces-x86.retro include
 
 :asm (-------------------------------------------------------------------------)
 
@@ -487,7 +487,7 @@ asm
 Writing to a file:
 ~~~
 'outfile var
-'kernel file:W file:open !outfile
+'kernel-x86 file:W file:open !outfile
 
 #32         [ &mb:Start I + fetch @outfile file:write ] times<with-index>
 asm:currpos [ &asm:Code I + fetch @outfile file:write ] times<with-index>

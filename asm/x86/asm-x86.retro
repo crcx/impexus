@@ -16,12 +16,12 @@ Flow control commands that work on addresses and haven't got any special prefix.
 All the commands and helpers are defined in the following included files:
 ~~~
 
-'asm/asm-x86-common.forth      include
-'asm/asm-x86-arithmetic.forth  include
-'asm/asm-x86-bitwise.forth     include
-'asm/asm-x86-flowcontrol.forth include
-'asm/asm-x86-misc.forth        include
-'asm/asm-x86-mov.forth         include
+'asm/x86/asm-x86-common.retro      include
+'asm/x86/asm-x86-arithmetic.retro  include
+'asm/x86/asm-x86-bitwise.retro     include
+'asm/x86/asm-x86-flowcontrol.retro include
+'asm/x86/asm-x86-misc.retro        include
+'asm/x86/asm-x86-mov.retro         include
 
 ~~~
 
