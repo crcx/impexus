@@ -3,6 +3,7 @@
 ~~~
 'textmode:ii   var
 'textmode:iq   var
+'no-wraparound var
 'screen-offset var
 
 :textmode:asm
@@ -12,18 +13,24 @@
   textmode:ii asm:label
     TMP asm:push
   
-    TMP screen-offset asm:phyaddr asm:movi
+    TMP screen-offset asm:phyaddr asm:movi (Get_screen_position)
     TMP TMP asm:movm2r
-  
-    TMP AL  asm:movr2m8
+    
+    TMP AL  asm:movr2m8 (Character_to_print)
     TMP #1 asm:addi
-    EAX #12 asm:movi
+    EAX #12 asm:movi    (Red_text_color)
     TMP AL  asm:movr2m8
     TMP #1 asm:addi
     
-    EAX screen-offset asm:phyaddr asm:movi
+    (Calculate_wraparound)
+    TMP #757664 asm:cmpi
+    no-wraparound asm:jl
+      TMP #753664 asm:movi
+    no-wraparound asm:label
+    
+    EAX screen-offset asm:phyaddr asm:movi (Store_next_position)
     EAX TMP asm:movr2m
-  
+    
     aux:stack-pull asm:call
     TMP asm:pop
     
