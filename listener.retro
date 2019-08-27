@@ -1,0 +1,38 @@
+~~~
+#129 !TempStringMax
+
+:halt repeat as{ 'en...... i }as again ;
+
+{{
+  :eol? (c-f)
+    [ ASCII:CR eq? ] [ ASCII:LF eq? ] [ ASCII:SPACE eq? ] tri or or ;
+
+  :valid? (s-sf)
+    dup s:length n:-zero? ;
+
+  :check-bs (c-c)
+    dup [ #8 eq? ] [ #127 eq? ] bi or [ buffer:get buffer:get drop-pair ] if ;
+---reveal---
+  :s:get-word (-s) [ #1025 buffer:set
+                [ c:get dup buffer:add check-bs eol? ] until
+                  buffer:start s:chop ] buffer:preserve ;
+
+  :s:get (-s) [ #1025 buffer:set
+                [ c:get dup buffer:add check-bs [ ASCII:CR eq? ] [ ASCII:LF eq? ] bi or ] until
+                  buffer:start s:chop ] buffer:preserve ;
+
+  :listen (-)
+    io:identify-bridge
+    vga:initialize
+    clear 'RETRO/Native_(Impexus)_ s:put
+    @Version #100 /mod n:put $. c:put n:put nl
+    EOM FREE '%n_free,_%n_total\n s:format s:put
+    repeat s:get-word valid? &interpret &drop choose again ;
+
+  :words [ d:name s:put sp ] d:for-each nl ;
+
+  &listen #1 store
+  [ $? c:put sp 'word_not_found s:put nl ] &err:notfound set-hook
+}}
+
+~~~

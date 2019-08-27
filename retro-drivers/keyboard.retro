@@ -1,0 +1,35 @@
+~~~
+0x60 'keyboard:DATA  const
+0x64 'keyboard:STATUS const
+
+:keyboard:wait
+  [ keyboard:STATUS pio:in-byte #1 and n:-zero? ] until ;
+
+:keyboard:read
+  keyboard:DATA pio:in-byte ;
+
+:uuu
+  keyboard:wait
+  #0 [ drop keyboard:read 0x7F and dup 0x39 gt? [ drop keyboard:wait #0 ] if dup #0 -eq? ] until ;
+
+'keyboard:qwerty d:create
+  #0 , #27 , $1 , $2 , $3 , $4 , $5 , $6 , $7 , $8 , $9 , $0 , $- , $= , #8 ,
+  #9 ,  $q , $w , $e , $r , $t , $y , $u , $i , $o , $p , $[ , $] , #10 ,
+  #-1 , $a , $s , $d , $f , $g , $h , $j , $k , $l , $; , $' , $` ,
+  #-1 , $\ , $z , $x , $c , $v , $b , $n , $m , $, , #-1 , $/ , $* , #0 , #32 , #32 ,
+
+'keyboard:qwerty:Shifted d:create
+  #0 , #27 , $! , $@ , $# , $$ , $% , $^ , $& , $* , $( , $) , $  , $+ , #8 ,
+  #9 , $Q , $W , $E , $R , $T , $Y , $U , $I , $O , $P , ${ , $} , #10 ,
+  #-1 , $A , $S , $D , $F , $G , $H , $J , $K , $L , $: , $" , $~ ,
+  #-1 ,  $| , $Z , $X , $C , $V , $B , $N , $M , $< , $> , $? ,
+  #-1 ,  $* , #0 , #32 , #32 ,
+
+{{
+  :n &keyboard:qwerty + fetch ;
+  :N &keyboard:qwerty:Shifted + fetch ;
+---reveal---
+  :c:get uuu drop uuu n dup #-1 eq? [ drop uuu drop uuu N ] if dup c:put ;
+}}
+~~~
+
