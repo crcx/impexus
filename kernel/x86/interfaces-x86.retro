@@ -12,6 +12,7 @@ Included interfaces:
 ~~~
 
 'kernel/x86/interfaces/textmode.retro include
+'kernel/x86/interfaces/io-bridge.retro include
 
 ~~~
 To add a new interface:
@@ -22,9 +23,11 @@ To add a new interface:
 
 :interfaces:asm
   textmode:asm
+  io-bridge:asm
 
   interfaces:table asm:label
     textmode:ii asm:jmp (|) textmode:iq asm:jmp
+    io-bridge:ii asm:jmp (|) io-bridge:iq asm:jmp
   interfaces:table-end asm:label
   
   @interfaces:table-end @interfaces:table - #10 / !interfaces:Count

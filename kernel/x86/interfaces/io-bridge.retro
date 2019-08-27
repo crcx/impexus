@@ -1,0 +1,105 @@
+# I/O Bridge providing access to raw hardware
+
+~~~
+'io-bridge:ii   var
+'io-bridge:iq   var
+
+'io:x86:read            var
+'io:x86:store           var
+'io:x86:read-byte       var
+'io:x86:store-byte      var
+'io:x86:in-port-byte    var
+'io:x86:out-port-byte   var
+'io:x86:in-port         var
+'io:x86:out-port        var
+
+:io-bridge:asm
+  io-bridge:ii asm:label
+    TOS #0 asm:cmpi
+    io:x86:in-port-byte asm:je
+    TOS #1 asm:cmpi
+    io:x86:out-port-byte asm:je
+    TOS #2 asm:cmpi
+    io:x86:store asm:je
+    TOS #3 asm:cmpi
+    io:x86:read asm:je
+    TOS #4 asm:cmpi
+    io:x86:store-byte asm:je
+    TOS #5 asm:cmpi
+    io:x86:read-byte asm:je
+    TOS #6 asm:cmpi
+    io:x86:in-port asm:je
+    TOS #7 asm:cmpi
+    io:x86:out-port asm:je
+    aux:stack-pull asm:call
+    asm:ret
+  
+  io-bridge:iq asm:label (-vn)
+    aux:stack-push asm:call
+    aux:stack-push asm:call
+    TOS #2000 asm:movi
+    SOS #0 asm:movi
+    asm:ret
+
+io:x86:read-byte       asm:label
+  aux:stack-pull asm:call
+  EAX EAX asm:movm2r
+  EAX #255 asm:andi
+  asm:ret
+
+io:x86:store-byte      asm:label
+  aux:stack-pull asm:call
+  AL EBX asm:movr2m8
+  aux:stack-pull asm:call
+  aux:stack-pull asm:call
+  asm:ret
+
+io:x86:read       asm:label
+  aux:stack-pull asm:call
+  asm:ret
+
+io:x86:store      asm:label
+  aux:stack-pull asm:call
+  asm:ret
+
+io:x86:in-port-byte    asm:label
+  aux:stack-pull asm:call
+  EDX asm:push
+  EDX EAX asm:movr
+  asm:inb
+  EDX asm:pop
+  asm:ret
+
+io:x86:out-port-byte asm:label
+  aux:stack-pull asm:call
+  EDX asm:push
+  EDX EAX asm:movr
+  aux:stack-pull asm:call
+  asm:outb
+  aux:stack-pull asm:call
+  EDX asm:pop
+  asm:ret
+
+io:x86:in-port         asm:label
+  aux:stack-pull asm:call
+  EDX asm:push
+  EDX EAX asm:movr
+  asm:inw
+  EDX asm:pop
+  asm:ret
+
+io:x86:out-port      asm:label
+  aux:stack-pull asm:call
+  EDX asm:push
+  EAX EDX asm:movr
+  aux:stack-pull asm:call
+  asm:outw
+  EDX asm:pop
+  aux:stack-pull asm:call
+  asm:ret
+
+;
+
+
+
+~~~
