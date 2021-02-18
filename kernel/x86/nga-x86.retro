@@ -20,7 +20,7 @@ VR: The VM's Return Stack
 #34264 'VR-TOP const
 #35264 'VR-BOTTOM const
 
-ENTADDR 'nga:codeoffset     var<n>
+ENTADDR 'nga:codeoffset     var-n
 
 ~~~
 Register definitions.
@@ -489,8 +489,8 @@ Writing to a file:
 'outfile var
 'kernel-x86 file:W file:open !outfile
 
-#32         [ &mb:Start I + fetch @outfile file:write ] times<with-index>
-asm:currpos [ &asm:Code I + fetch @outfile file:write ] times<with-index>
+#32         [ &mb:Start I + fetch @outfile file:write ] indexed-times
+asm:currpos [ &asm:Code I + fetch @outfile file:write ] indexed-times
 
 @outfile file:close 
 
